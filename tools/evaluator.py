@@ -40,11 +40,41 @@ def evaluator_tools():
 
         args_schema: Optional[Type[BaseModel]] = compare_predictionInput
 
+    def buy_or_sell(current_price: float, prediction:float) -> str:
+        if current_price>prediction:
+            position="sell"
+        else:
+            position="buy"
+        return str(position)
+
+    class buy_or_sellInput(BaseModel):
+        """Input for printing final prediction number."""
+        current_price: float = Field(..., description="Current stock price")
+        prediction: float = Field(..., description="Final price prediction from Evaluator")
+
+    class buy_or_sellTool(BaseTool):
+        name = "Comparing current price with prediction"
+        description = """Useful for deciding if to buy/sell stocks based on the prediction result."""
+
+        def _run(self, current_price=float,prediction=float):
+            position = buy_or_sell(current_price,prediction)
+            return {"position": position}
+
+        def _arun(self,current_price=float,prediction=float):
+            raise NotImplementedError("This tool does not support async")
+
+        args_schema: Optional[Type[BaseModel]] = buy_or_sellInput
+
     tools_evaluate = [
         StructuredTool.from_function(
             func=compare_predictionTool,
             args_schema=compare_predictionInput,
             description="Function to evaluate predicted stock prices and print final result.",
-        )
+        ),
+        StructuredTool.from_function(
+            func=buy_or_sellTool,
+            args_schema=buy_or_sellInput,
+            description="Function to evaluate client stock position.",
+        ),
     ]
     return tools_evaluate

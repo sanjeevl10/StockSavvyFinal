@@ -1,5 +1,4 @@
 from transformers import pipeline
-from client import AlpacaNewsFetcher
 from alpaca_trade_api import REST
 import os
 from dotenv import load_dotenv
@@ -7,7 +6,7 @@ from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import date, timedelta
-from pydantic import BaseModel, Field
+from pydantic.v1 import BaseModel, Field
 from langchain.tools import BaseTool
 from typing import Optional, Type
 from langchain.tools import StructuredTool
@@ -130,7 +129,6 @@ def sentimental_analysis_tools():
             Returns:
             - dict: A dictionary containing sentiment analysis results.
             """
-            print(sentiment_analysis_result)
             df = pd.DataFrame(sentiment_analysis_result)
             df['Timestamp'] = pd.to_datetime(df['Timestamp'])
             df['Date'] = df['Timestamp'].dt.date
@@ -170,7 +168,7 @@ def sentimental_analysis_tools():
 
     #Function to get the stock sentiment
     def get_stock_sentiment(stockticker: str):
-
+ 
         #Initialize AlpacaNewsFetcher, a class for fetching news articles related to a specific stock from Alpaca API.
         news_fetcher = AlpacaNewsFetcher()
 
@@ -211,9 +209,14 @@ def sentimental_analysis_tools():
 
         #Get dominant sentiment
         dominant_sentiment = news_sentiment_analyzer.get_dominant_sentiment(sentiment_analysis_result)
+
+        #Build response string for news sentiment
+        output_string = ""
+        for result in analysis_result:
+            output_string = output_string + f'{result["Timestamp"]} : {result["News- Title:Summary"]} : {result["Sentiment"]}' + '\n'
         
         final_result = {
-                'Sentiment-analysis-result' : analysis_result,
+                'Sentiment-analysis-result' : output_string,
                 'Dominant-sentiment' : dominant_sentiment['sentiment']
         }
 
@@ -237,6 +240,9 @@ def sentimental_analysis_tools():
         def _run(self, stockticker: str):
             # print("i'm running")
             sentiment_response = get_stock_sentiment(stockticker)
+            print("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+            print(str(sentiment_response))
+            print("++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 
             return sentiment_response
 

@@ -1,7 +1,7 @@
 # Chatbot using Langchain and Chainlit
 
 ```bash
-git clone git@github.com:sanjeevl10/StockSavvyFinal.git
+git clone https://github.com/amalaj7/Chatbot-using-Langchain-Chainlit.git
 ```
 Install dependencies
 ```bash
