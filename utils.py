@@ -28,9 +28,7 @@ def plot_candlestick_stock_price(historical_data):
     fig.show()
 
 def historical_stock_prices(stockticker, days_ago):
-    """Upload accurate data to accurate dates from yahoo finance.
-    Receive data on the last week and give them to forecasting experts.
-    Receive data on the last 90 days and give them to visualization expert."""
+    """Upload accurate data to accurate dates from yahoo finance."""
     ticker = yf.Ticker(stockticker)
     end_date = datetime.now()
     start_date = end_date - timedelta(days=days_ago)
