@@ -5,7 +5,10 @@ from langchain.tools import StructuredTool
 import yfinance as yf
 from typing import List
 from datetime import datetime,timedelta
+<<<<<<< HEAD
 import pandas as pd
+=======
+>>>>>>> 594c18622dd698f1854229dda280817492475d75
 
 def investment_advisor_tools():
 
@@ -31,6 +34,7 @@ def investment_advisor_tools():
 
         args_schema: Optional[Type[BaseModel]] = newsSummaryInput
 
+<<<<<<< HEAD
     def analyze_prices():
         """Take historical prices, analyze them and answer user's questions."""
         df_prices=pd.read_csv('../df_history.csv')
@@ -52,17 +56,23 @@ def investment_advisor_tools():
             raise NotImplementedError("This tool does not support async")
 
         args_schema: Optional[Type[BaseModel]] = pricesInput
+=======
+
+>>>>>>> 594c18622dd698f1854229dda280817492475d75
 
     tools_reccommend = [
         StructuredTool.from_function(
             func=newsSummaryTool,
             args_schema=newsSummaryInput,
             description="Summarize articles.",
+<<<<<<< HEAD
         ),
         StructuredTool.from_function(
             func=pricesTool,
             args_schema=pricesInput,
             description="Analyze stock prices.",
+=======
+>>>>>>> 594c18622dd698f1854229dda280817492475d75
         )
     ]
     return tools_reccommend

@@ -64,7 +64,11 @@ def data_analyst_tools():
             func=StockPriceTool,
             args_schema=StockPriceCheckInput,
             description="Function to get current stock prices.",
+<<<<<<< HEAD
         ),
+=======
+        )
+>>>>>>> 594c18622dd698f1854229dda280817492475d75
         # StructuredTool.from_function(
         #     func=HistoricalStockPricesTool,
         #     args_schema=HistoricalStockPricesInput,

@@ -1,0 +1,13 @@
+alpaca_trade_api
+transformers
+einops
+accelerate
+langchain
+bitsandbytes
+#sentencepeice
+openai
+backtrader
+yfinance
+pandas
+pyfolio
+python-dotenv
