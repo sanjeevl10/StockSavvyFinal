@@ -4,3 +4,5 @@ __pycache__/
 *.faiss
 *.pkl
 .files
+.st
+.stock_image1.png
