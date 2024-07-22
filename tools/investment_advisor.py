@@ -5,10 +5,7 @@ from langchain.tools import StructuredTool
 import yfinance as yf
 from typing import List
 from datetime import datetime,timedelta
-<<<<<<< HEAD
 import pandas as pd
-=======
->>>>>>> 594c18622dd698f1854229dda280817492475d75
 
 def investment_advisor_tools():
 
