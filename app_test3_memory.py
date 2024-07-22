@@ -34,6 +34,9 @@ import matplotlib.pyplot as plt
 from langgraph.checkpoint.memory import MemorySaver
 
 load_dotenv()
+HF_ACCESS_TOKEN = os.environ["HF_ACCESS_TOKEN"]
+DAYS_TO_FETCH_NEWS = os.environ["DAYS_TO_FETCH_NEWS"]
+NO_OF_NEWS_ARTICLES_TO_FETCH = os.environ["NO_OF_NEWS_ARTICLES_TO_FETCH"]
 OPENAI_API_KEY = os.environ["OPENAI_API_KEY"]
 
 from GoogleNews import GoogleNews
