@@ -3,7 +3,7 @@
 from datetime import datetime, timedelta
 import pandas as pd
 from statsmodels.tsa.arima.model import ARIMA
-from scikit-learn import mean_absolute_error
+from sklearn.metrics import mean_absolute_error
 from pydantic.v1 import BaseModel, Field
 from langchain.tools import BaseTool
 from typing import Optional, Type
