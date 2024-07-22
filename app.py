@@ -200,10 +200,10 @@ async def on_chat_start():
     cl.user_session.set("counter", 0)
     # Sending an image with the local file path
     elements = [
-    cl.Image(name="image1", display="inline", path="good_day.png",size="large")
+    cl.Image(name="image1", display="inline", path="./good_day.jpg",size="large")
     ]
     await cl.Message(content="Hello there, Welcome to ##StockSavyy!", elements=elements).send()
-    await cl.Message(content="Tell me the stockticker you want me to analyze.").send()
+    await cl.Message(content="Please enter the name of the company for which you would like a stock prediction.").send()
 
 @cl.on_message
 async def main(message: cl.Message):
