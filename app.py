@@ -188,27 +188,32 @@ workflow.add_edge("Forecasting_expert_ARIMA","Evaluator")
 workflow.add_edge("Evaluator",END)
 graph = workflow.compile()
 
-#Print graph
-#graph.get_graph().print_ascii()
-
 """ memory = MemorySaver()
 workflow_news = StateGraph(AgentState)
 workflow_news.add_node("Investment_advisor", reccommend)
 workflow_news.set_entry_point("Investment_advisor")
 workflow_news.add_edge("Investment_advisor",END)
 graph_news = workflow_news.compile(checkpointer=memory) """
+#Print graph
+#graph.get_graph().print_ascii()
 
 from langchain_core.runnables import RunnableConfig
 from chainlit import AskUserMessage
 @cl.on_chat_start
 async def on_chat_start():
     cl.user_session.set("counter", 0)
+
     # Sending an image with the local file path
     elements = [
-    cl.Image(name="image1", display="inline", path="./good_day.jpg",size="large")
+    cl.Image(name="image1", display="inline", path="./stock_image1.png",size="large")
     ]
     await cl.Message(content="Hello there, Welcome to ##StockSavyy!", elements=elements).send()
-    await cl.Message(content="Please enter the name of the company for which you would like a stock prediction.").send()
+    await cl.Message(content="Tell me the stockticker you want me to analyze.").send()
+    question_array='These are my questions.'
+    cl.user_session.set("question_array",question_array)
+    question=''
+    response=''
+    cl.user_session.set("question",question)
 
 @cl.on_message
 async def main(message: cl.Message):
@@ -216,13 +221,19 @@ async def main(message: cl.Message):
     counter = cl.user_session.get("counter")
     counter += 1
     cl.user_session.set("counter", counter)
+    question_array=cl.user_session.get("question_array")
+    question_array += (f"Question: {message.content}")
+    cl.user_session.set("question_array", question_array)
+    #question=cl.user_session.get("question")
+    
     await cl.Message(content=f"You sent {counter} message(s)!").send()
     #if counter==1:
     inputs = {"messages": [HumanMessage(content=message.content)]}
+    #print(str(message.content))
     
     #Checking if input message is a stock search, assumption here is that if user types a stockticker explicity or
     #inputs the name of the company for app to find stockticker the lenght of input won't be greater than 15
-    if len(str(message.content)) <= 15 and counter==1:
+    if len(str(message.content)) <= 15:
 
         res_data = graph_data.invoke(inputs, config=RunnableConfig(callbacks=[
             cl.LangchainCallbackHandler(
@@ -478,7 +489,6 @@ async def main(message: cl.Message):
         question_array += (f"Answer: {response}")
         print(response)
         print(question_array)
-
 
     
     
