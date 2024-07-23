@@ -25,3 +25,4 @@ streamlit
 googlenews
 scikit-learn==1.5.1
 torch
+qdrant-client

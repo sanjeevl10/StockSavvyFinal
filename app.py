@@ -32,6 +32,11 @@ from tools import data_analyst, forecasting_expert_arima, forecasting_expert_rf,
 from chainlit.input_widget import Select
 import matplotlib.pyplot as plt
 from langgraph.checkpoint.memory import MemorySaver
+from langgraph.checkpoint.memory import MemorySaver
+from langchain_openai.embeddings import OpenAIEmbeddings
+from operator import itemgetter
+from langchain.schema.output_parser import StrOutputParser
+from langchain.schema.runnable import RunnablePassthrough
 
 load_dotenv()
 HF_ACCESS_TOKEN = os.environ["HF_ACCESS_TOKEN"]
@@ -214,108 +219,265 @@ async def main(message: cl.Message):
     await cl.Message(content=f"You sent {counter} message(s)!").send()
     #if counter==1:
     inputs = {"messages": [HumanMessage(content=message.content)]}
-    res_data = graph_data.invoke(inputs, config=RunnableConfig(callbacks=[
-        cl.LangchainCallbackHandler(
-            to_ignore=["ChannelRead", "RunnableLambda", "ChannelWrite", "__start__", "_execute"]
-            # can add more into the to_ignore: "agent:edges", "call_model"
-            # to_keep=
-
-        )]))
-    #print(res_data)
-    await cl.Message(content=res_data["messages"][-1].content).send()
-    #print('ticker',str(res_data).split(">>"))
-    if len(str(res_data).split(">>")[1])<10:
-        stockticker=(str(res_data).split(">>")[1])
-    else:
-        stockticker=(str(res_data).split(">>")[0])
-    #print('ticker1',stockticker)
-    print('here')
-    df=u.get_stock_price(stockticker)
-    df_history=u.historical_stock_prices(stockticker,90)
-    df_history_to_msg1=eval(str(list((pd.DataFrame(df_history['Close'].values.reshape(1, -1)[0]).T).iloc[0,:])))
-
-    inputs_all = {"messages": [HumanMessage(content=(f"Predict {stockticker}, historical prices are: {df_history_to_msg1}."))]}
-    df_history=pd.DataFrame(df_history)
-    df_history['stockticker']=np.repeat(stockticker,len(df_history))
-    df_history.to_csv('df_history.csv')
-    #df_history.to_csv('./tools/df_history.csv')
-
-    print ("Running forecasting models on historical prices")
-    res = graph.invoke(inputs_all, config=RunnableConfig(callbacks=[
-        cl.LangchainCallbackHandler(
-            to_ignore=["ChannelRead", "RunnableLambda", "ChannelWrite", "__start__", "_execute"]
-            # can add more into the to_ignore: "agent:edges", "call_model"
-            # to_keep=
-
-        )]))
-    await cl.Message(content= res["messages"][-2].content + '\n\n' + res["messages"][-1].content).send()
-
-    #Plotting the graph
-    df=u.historical_stock_prices(stockticker,90)
-    df=u.calculate_MACD(df, fast_period=12, slow_period=26, signal_period=9)
-    #df values
-    #Index(['Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits','EMA_fast', 'EMA_slow', 'MACD', 'Signal_Line', 'MACD_Histogram']
-    fig = u.plot_macd2(df)
     
-    if fig:
-        elements = [cl.Pyplot(name="plot", figure=fig, display="inline",size="large"),
-        ]
-        await cl.Message(
-            content="Here is the MACD plot",
-            elements=elements,
-        ).send()
-    else:
-        await cl.Message(
-            content="Failed to generate the MACD plot."
-        ).send()
+    #Checking if input message is a stock search, assumption here is that if user types a stockticker explicity or
+    #inputs the name of the company for app to find stockticker the lenght of input won't be greater than 15
+    if len(str(message.content)) <= 15 and counter==1:
+
+        res_data = graph_data.invoke(inputs, config=RunnableConfig(callbacks=[
+            cl.LangchainCallbackHandler(
+                to_ignore=["ChannelRead", "RunnableLambda", "ChannelWrite", "__start__", "_execute"]
+                # can add more into the to_ignore: "agent:edges", "call_model"
+                # to_keep=
+
+            )]))
+        #print(res_data)
+        await cl.Message(content=res_data["messages"][-1].content).send()
+        print('ticker',str(res_data).split(">>")[0])
+        if len(str(res_data).split(">>")[1])<10:
+            stockticker=(str(res_data).split(">>")[1])
+        else:
+            stockticker=(str(res_data).split(">>")[0])
 
 
-    #Perform sentiment analysis on the stock news & predict dominant sentiment along with plotting the sentiment breakdown chart
-    news_articles = stock_sentiment_analysis_util.fetch_news(stockticker)
+        #print('ticker1',stockticker)
+        print('here')
+        df=u.get_stock_price(stockticker)
+        df_history=u.historical_stock_prices(stockticker,90)
+        df_history_to_msg1=eval(str(list((pd.DataFrame(df_history['Close'].values.reshape(1, -1)[0]).T).iloc[0,:])))
 
-    analysis_results = []
-    
-    #Perform sentiment analysis for each product review
-    for article in news_articles:
-        sentiment_analysis_result = stock_sentiment_analysis_util.analyze_sentiment(article['News_Article'])
+        inputs_all = {"messages": [HumanMessage(content=(f"Predict {stockticker}, historical prices are: {df_history_to_msg1}."))]}
+        df_history=pd.DataFrame(df_history)
+        df_history['stockticker']=np.repeat(stockticker,len(df_history))
+        df_history.to_csv('df_history.csv')
+        #df_history.to_csv('./tools/df_history.csv')
 
-        # Display sentiment analysis results
-        #print(f'News Article: {sentiment_analysis_result["News_Article"]} : Sentiment: {sentiment_analysis_result["Sentiment"]}', '\n')
+        print ("Running forecasting models on historical prices")
+        res = graph.invoke(inputs_all, config=RunnableConfig(callbacks=[
+            cl.LangchainCallbackHandler(
+                to_ignore=["ChannelRead", "RunnableLambda", "ChannelWrite", "__start__", "_execute"]
+                # can add more into the to_ignore: "agent:edges", "call_model"
+                # to_keep=
 
-        result = {
-                    'News_Article': sentiment_analysis_result["News_Article"],
-                    'Sentiment': sentiment_analysis_result["Sentiment"][0]['label']
-                }
+            )]))
+        await cl.Message(content= res["messages"][-2].content + '\n\n' + res["messages"][-1].content).send()
+
+        #Storing recommendation
+        recommendation = "Recommendation for " + stockticker + '\n' + res["messages"][-2].content + '\n\n' + res["messages"][-1].content
+
+
+        #Plotting the graph
+        df=u.historical_stock_prices(stockticker,90)
+        df=u.calculate_MACD(df, fast_period=12, slow_period=26, signal_period=9)
+        #df values
+        #Index(['Open', 'High', 'Low', 'Close', 'Volume', 'Dividends', 'Stock Splits','EMA_fast', 'EMA_slow', 'MACD', 'Signal_Line', 'MACD_Histogram']
+        fig = u.plot_macd2(df)
         
-        analysis_results.append(result)
+        if fig:
+            elements = [cl.Pyplot(name="plot", figure=fig, display="inline",size="large"),
+            ]
+            await cl.Message(
+                content="Here is the MACD plot",
+                elements=elements,
+            ).send()
+        else:
+            await cl.Message(
+                content="Failed to generate the MACD plot."
+            ).send()
 
-    
-    #Retrieve dominant sentiment based on sentiment analysis data of reviews
-    dominant_sentiment = stock_sentiment_analysis_util.get_dominant_sentiment(analysis_results)
-    await cl.Message(
-            content="Dominant sentiment of the stock based on last 7 days of news is : " + dominant_sentiment
-        ).send()
-    
-    #Plot sentiment breakdown chart
-    
-    fig = stock_sentiment_analysis_util.plot_sentiment_graph(analysis_results)
-    if fig:
-        elements = [cl.Pyplot(name="plot", figure=fig, display="inline",size="large"),
-        ]
+
+        #Perform sentiment analysis on the stock news & predict dominant sentiment along with plotting the sentiment breakdown chart
+        news_articles = stock_sentiment_analysis_util.fetch_news(stockticker)
+
+        analysis_results = []
+        
+        #Perform sentiment analysis for each product review
+        for article in news_articles:
+            sentiment_analysis_result = stock_sentiment_analysis_util.analyze_sentiment(article['News_Article'])
+
+            # Display sentiment analysis results
+            #print(f'News Article: {sentiment_analysis_result["News_Article"]} : Sentiment: {sentiment_analysis_result["Sentiment"]}', '\n')
+
+            result = {
+                        'News_Article': sentiment_analysis_result["News_Article"],
+                        'Sentiment': sentiment_analysis_result["Sentiment"][0]['label']
+                    }
+            
+            analysis_results.append(result)
+
+        
+        #Retrieve dominant sentiment based on sentiment analysis data of reviews
+        dominant_sentiment = stock_sentiment_analysis_util.get_dominant_sentiment(analysis_results)
         await cl.Message(
-            content="Sentiment breakdown plot",
-            elements=elements,
-        ).send()
+                content="Dominant sentiment of the stock based on last 7 days of news is : " + dominant_sentiment
+            ).send()
+        
+        #Plot sentiment breakdown chart
+        fig = stock_sentiment_analysis_util.plot_sentiment_graph(analysis_results)
+        if fig:
+            elements = [cl.Pyplot(name="plot", figure=fig, display="inline",size="large"),
+            ]
+            await cl.Message(
+                content="Sentiment breakdown plot",
+                elements=elements,
+            ).send()
+        else:
+            await cl.Message(
+                content="Failed to generate the MACD plot."
+            ).send()
+
+        #Generate summarized message rationalize dominant sentiment
+        summary = stock_sentiment_analysis_util.generate_summary_of_sentiment(analysis_results, dominant_sentiment)
+        await cl.Message(
+                content= summary
+            ).send()
+        
+
+        #Storing sentiment summary
+        recommendation = recommendation + '\n' + "Stock sentiment summary for " + stockticker + ' is,  \n' + summary + '\n and dominant sentiment for stock is ' + dominant_sentiment
+        print("******************************************************")
+        print(recommendation)
+        print("******************************************************")
+        answers=np.append(res["messages"][-1].content,summary)
+        with open('answers.txt', 'w') as a:
+            a.write(str(answers))
+
+
+        #Adding messages to Qdrant in memory store, to provide users ability to ask questions based on the recommmendation and sentiment summarization
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size = 250,
+            chunk_overlap = 20
+        )
+        recommendation_chunks = text_splitter.split_text(recommendation)
+        # Convert the chunks into Document objects
+        from langchain.schema import Document
+        documents = [Document(page_content=chunk) for chunk in recommendation_chunks]
+
+        #4 Store embeddings in QDrant vector store in memory
+        from langchain_community.vectorstores import Qdrant
+        qdrant_vector_store = Qdrant.from_documents(
+            documents,
+            OpenAIEmbeddings(model="text-embedding-3-small"),
+            location=":memory:",
+            collection_name="Stock Analysis",
+        )
+        qdrant_retriever = qdrant_vector_store.as_retriever()
+
+        #Setting up RAG Prompt Template
+        from langchain_core.prompts import PromptTemplate
+        RAG_PROMPT_TEMPLATE = """\
+        <|start_header_id|>system<|end_header_id|>
+        You are a helpful assistant. You answer user questions based on provided context. If you can't answer the question with the provided context, say you don't know.<|eot_id|>
+
+        <|start_header_id|>user<|end_header_id|>
+        User Query:
+        {question}
+
+        Context:
+        {context}<|eot_id|>
+
+        <|start_header_id|>assistant<|end_header_id|>
+        """
+        rag_prompt = PromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
+
+        from langchain.memory import ConversationBufferMemory
+        from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+        # Instantiate ConversationBufferMemory
+        memory = ConversationBufferMemory(
+        return_messages=True, output_key="answer", input_key="question"
+        )
+        llm = ChatOpenAI(model="gpt-3.5-turbo")
+        # First, load the memory to access chat history
+        loaded_memory = RunnablePassthrough.assign(
+        chat_history=RunnableLambda(memory.load_memory_variables) | itemgetter("history"),
+        )
+        retrieval_augmented_qa_chain = (loaded_memory|
+        {"context": itemgetter("question") | qdrant_retriever, "question": itemgetter("question")}
+        | RunnablePassthrough.assign(context=itemgetter("context"))
+        | {"response": rag_prompt | llm, "context": itemgetter("context")}
+        )
+        cl.user_session.set("lcel_rag_chain", retrieval_augmented_qa_chain)
+        
+
     else:
+        #question_array=question_array+message.content
+        print('questions', question_array)
+        file = open("answers.txt", "r")
+        answers = file.read()
+
+        from langchain.text_splitter import RecursiveCharacterTextSplitter
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size = 250,
+            chunk_overlap = 20
+        )
+        recommendation_chunks = text_splitter.split_text(answers)
+        question_chunks = text_splitter.split_text(question_array)
+        all_chunks=recommendation_chunks+question_chunks
+        # Convert the chunks into Document objects
+        from langchain.schema import Document
+        documents = [Document(page_content=chunk) for chunk in all_chunks] #recommendation_chunks]
+
+        #4 Store embeddings in QDrant vector store in memory
+        from langchain_community.vectorstores import Qdrant
+        qdrant_vector_store = Qdrant.from_documents(
+            documents,
+            OpenAIEmbeddings(model="text-embedding-3-small"),
+            location=":memory:",
+            collection_name="Stock Analysis",
+        )
+        qdrant_retriever = qdrant_vector_store.as_retriever()
+
+        #Setting up RAG Prompt Template
+        from langchain_core.prompts import PromptTemplate
+        RAG_PROMPT_TEMPLATE = """\
+        <|start_header_id|>system<|end_header_id|>
+        You are a helpful assistant. You answer user questions based on provided context. If you can't answer the question with the provided context, say you don't know.<|eot_id|>
+
+        <|start_header_id|>user<|end_header_id|>
+        User Query:
+        {question}
+
+        Context:
+        {context}<|eot_id|>
+
+        <|start_header_id|>assistant<|end_header_id|>
+        """
+        rag_prompt = PromptTemplate.from_template(RAG_PROMPT_TEMPLATE)
+
+        from langchain.memory import ConversationBufferMemory
+        from langchain_core.runnables import RunnableLambda, RunnablePassthrough
+        # Instantiate ConversationBufferMemory
+        memory = ConversationBufferMemory(
+        return_messages=True, output_key="answer", input_key="question"
+        )
+        llm = ChatOpenAI(model="gpt-3.5-turbo")
+        # First, load the memory to access chat history
+        loaded_memory = RunnablePassthrough.assign(
+        chat_history=RunnableLambda(memory.load_memory_variables) | itemgetter("history"),
+        )
+        retrieval_augmented_qa_chain = (loaded_memory|
+        {"context": itemgetter("question") | qdrant_retriever, "question": itemgetter("question")}
+        | RunnablePassthrough.assign(context=itemgetter("context"))
+        | {"response": rag_prompt | llm, "context": itemgetter("context")}
+        )
+        #retrieve lcel chain
+        cl.user_session.set("lcel_rag_chain", retrieval_augmented_qa_chain)
+
+        #retrieve lcel chain
+        lcel_rag_chain = cl.user_session.get("lcel_rag_chain")
+
+        question = message.content
+        print("Query : " + question)
+
+        result =  lcel_rag_chain.invoke({"question" : question})
         await cl.Message(
-            content="Failed to generate the MACD plot."
-        ).send()
-    
-    #Generate summarized message rationalize dominant sentiment
-    summary = stock_sentiment_analysis_util.generate_summary_of_sentiment(analysis_results, dominant_sentiment)
-    await cl.Message(
-            content= summary
-        ).send()
+                content= result["response"].content
+            ).send()
+        response=result["response"].content
+        question_array += (f"Answer: {response}")
+        print(response)
+        print(question_array)
 
 
     
